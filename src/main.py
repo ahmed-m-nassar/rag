@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from routes import base
+from routes import base , file
 from helpers.config import get_settings
 
 
@@ -18,3 +18,4 @@ app.on_event("startup")(startup_span)
 app.on_event("shutdown")(shutdown_span)
 
 app.include_router(base.base_router)
+app.include_router(file.file_router)
