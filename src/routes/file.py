@@ -1,5 +1,7 @@
-from fastapi import APIRouter, UploadFile,HTTPException
+from fastapi import APIRouter, UploadFile,HTTPException,Request
 from controllers.FileController  import FileController
+from models.FileModel import FileModel
+from models.db_schemes.FileSchema import FileSchema
 import os
 
 
@@ -32,3 +34,13 @@ async def upload_file(file: UploadFile):
         "filename": file.filename,
         "path": file_location
     }
+
+
+@file_router.post("/test/")
+async def test(request : Request , file: FileSchema):
+    
+    file_dict = file.dict(by_alias=True, exclude={"id"})
+    result = await request.app.test_db_connection["file"].insert_one(file_dict)
+    print(result)
+    #request.app.db_connection
+    

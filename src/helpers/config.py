@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     MAX_SIZE: int 
     ALLOWED_FILE_TYPES: List[str]  # List of allowed file types
     
+    MONGODB_CONNECTION : str
+    MONGODB_DATABASE_NAME : str
+    MONGODB_TEST_DATABASE_NAME : str
     class Config:
         env_file = ".env"
 
