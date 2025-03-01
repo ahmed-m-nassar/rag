@@ -12,6 +12,12 @@ class Settings(BaseSettings):
     MONGODB_CONNECTION : str
     MONGODB_DATABASE_NAME : str
     MONGODB_TEST_DATABASE_NAME : str
+
+    
+    # Vector DB
+    VECTORDB_CLIENT  : str
+    VECTORDB_PATH  : str
+    
     class Config:
         env_file = ".env"
 

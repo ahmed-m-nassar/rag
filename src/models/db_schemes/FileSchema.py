@@ -6,6 +6,9 @@ from bson.objectid import ObjectId
 class FileSchema(BaseModel):
     id: Optional[ObjectId] = Field(None, alias="_id")
     file_id: str = Field(..., min_length=1)
+    file_name: str = Field(...)
+    file_size: int = Field(...)
+    file_type: str = Field(...)
 
     @validator('file_id')
     def validate_file_id(cls, value):

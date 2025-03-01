@@ -2,6 +2,7 @@ import logging
 from fastapi import UploadFile, HTTPException
 from .BaseController import BaseController
 from models.enums.ResponseEnum import ResponseSignal
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -12,7 +13,7 @@ class FileController(BaseController):
     def __init__(self):
         super().__init__()
 
-    def validate_file_size(self, file: UploadFile):
+    def __validate_file_size(self, file: UploadFile):
         max_size = self.app_settings.MAX_SIZE * 1024 * 1024  # Convert MB to bytes
         if file.size > max_size:
             error_message = ResponseSignal.FILE_TOO_LARGE.value.format(self.app_settings.MAX_SIZE)
@@ -23,7 +24,7 @@ class FileController(BaseController):
             }
         return {"status": "success"}
 
-    def validate_file_type(self, file: UploadFile):
+    def __validate_file_type(self, file: UploadFile):
         allowed_types = self.app_settings.ALLOWED_FILE_TYPES
         file_extension = file.filename.split('.')[-1].lower()
         
@@ -39,13 +40,26 @@ class FileController(BaseController):
     async def validate_file(self, file: UploadFile):
         logger.info(f"Validating file: {file.filename} ({file.size} bytes)")
 
-        type_validation = self.validate_file_type(file)
+        type_validation = self.__validate_file_type(file)
         if type_validation["status"] == "error":
             raise HTTPException(status_code=400, detail=type_validation["message"])
 
-        size_validation = self.validate_file_size(file)
+        size_validation = self.__validate_file_size(file)
         if size_validation["status"] == "error":
             raise HTTPException(status_code=400, detail=size_validation["message"])
 
         logger.info(f"File '{file.filename}' passed validation")
         return {"status": "success", "message": "File is valid"}
+
+    async def chunk_file(file) :
+
+        text_splitter = RecursiveCharacterTextSplitter(
+                        # Set a really small chunk size, just to show.
+                        chunk_size=100,
+                        chunk_overlap=20,
+                        length_function=len,
+                        is_separator_regex=False,
+                    )
+        
+        texts = text_splitter.create_documents([file])
+        pass
