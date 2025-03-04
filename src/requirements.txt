@@ -10,3 +10,9 @@ chromadb==0.5.23
 pytest==8.3.4
 openai==1.65.1
 requests==2.32.3
+pytest-mock==3.14.0
+tiktoken==0.9.0
+streamlit==1.42.2
+plotly==6.0.0
+Werkzeug==3.1.3
+nltk==3.9.1

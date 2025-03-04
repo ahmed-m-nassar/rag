@@ -11,13 +11,11 @@ class OpenAIEmbeddingProvider(EmbeddingInterface):
                  model_id: str,
                  max_input_token : int,
                  api_key : str=None,
-                 api_url : str=None,
                  ):
         
         self.model_id = model_id
         self.max_input_token = max_input_token
         self.api_key = api_key
-        self.api_url = api_url
 
         self.client = OpenAI(api_key=api_key)
 

@@ -8,7 +8,9 @@ class Settings(BaseSettings):
 
     MAX_SIZE: int 
     ALLOWED_FILE_TYPES: List[str]  # List of allowed file types
-    
+    UPLOAD_DIR : str
+    CHUNKS_DIR : str
+
     MONGODB_CONNECTION : str
     MONGODB_DATABASE_NAME : str
     MONGODB_TEST_DATABASE_NAME : str
@@ -18,6 +20,13 @@ class Settings(BaseSettings):
     VECTORDB_CLIENT  : str
     VECTORDB_PATH  : str
     
+    
+    # Embedding
+    EMBEDDING_PROVIDER : str
+    EMBEDDING_MODEL_ID : str
+    EMBEDDING_MAX_INPUT : int
+    EMBEDDING_API_KEY : str
+
     class Config:
         env_file = ".env"
 
