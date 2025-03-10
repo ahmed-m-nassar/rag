@@ -2,9 +2,8 @@ from fastapi import APIRouter, UploadFile,HTTPException,Request , status
 from fastapi.responses import JSONResponse
 import logging
 from controllers.FileController  import FileController
-from models.FileModel import FileModel
-from models.db_schemes.FileSchema import FileSchema
 from models.enums.ResponseEnum import ResponseSignal
+from helpers.config import get_settings
 
 import os
 
@@ -20,9 +19,10 @@ upload_router = APIRouter(
 UPLOAD_DIR = "assets/uploaded_files"  # Directory where files will be saved
 os.makedirs(UPLOAD_DIR, exist_ok=True)  # Ensure the directory exists
 
-@upload_router.post("/upload_file")
+@upload_router.post("/")
 async def upload_file(request : Request , file: UploadFile):
-    
+
+    settings = get_settings()
     file_controller = FileController()
 
     # Validate the file
@@ -36,14 +36,14 @@ async def upload_file(request : Request , file: UploadFile):
                         }
                     )
     
-    # Remove old files before saving the new one
-    await file_controller.clean_directory(UPLOAD_DIR)
-
     # Sanitize file name
     safe_filename = await file_controller.sanitize_file_name(file)
 
-    #Save file
-    await file_controller.save_file(file , UPLOAD_DIR , safe_filename)
+    # Generate unique santized file name
+    unique_safe_file_name = await file_controller.generate_unique_filename(file_directory= settings.UPLOAD_DIR, file_name=safe_filename)
+
+    # Save file
+    await file_controller.save_file(file , UPLOAD_DIR , unique_safe_file_name)
 
     logger.info(f"File '{safe_filename}' uploaded successfully.")
 
@@ -51,7 +51,7 @@ async def upload_file(request : Request , file: UploadFile):
     return JSONResponse(
                         content={
                             "message": ResponseSignal.FILE_UPLOAD_SUCCESS.value,
-                            "file_name" : safe_filename
+                            "file_name" : unique_safe_file_name
                         }
                     )
 

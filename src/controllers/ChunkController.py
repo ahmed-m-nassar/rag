@@ -17,7 +17,7 @@ class ChunkController(BaseController):
         nltk.download('punkt_tab')
 
 
-    async def save_chunks(self, chunks: list[str], file_directory: str):
+    async def save_chunks(self, chunks: list[str], file_directory: str , file_name : str):
         """
         Saves the chunked text into a JSON file for later retrieval.
 
@@ -30,7 +30,7 @@ class ChunkController(BaseController):
         os.makedirs(file_directory, exist_ok=True)
 
         # Define the file path (store as a JSON file)
-        chunk_file_path = os.path.join(file_directory, "chunks.json")
+        chunk_file_path = os.path.join(file_directory, file_name)
 
         # Save chunks as a JSON file
         with open(chunk_file_path, "w", encoding="utf-8") as f:
@@ -38,7 +38,7 @@ class ChunkController(BaseController):
 
         return True
         
-    async def load_chunks(self, file_directory: str) -> list[str]:
+    async def load_chunks(self, file_directory: str , file_name : str) -> list[str]:
         """
         Loads chunked text from a previously saved JSON file.
 
@@ -50,8 +50,8 @@ class ChunkController(BaseController):
             list[str]: List of chunked text segments.
         """
         # Define the file path
-        chunk_file_path = os.path.join(file_directory, "chunks.json")
-
+        chunk_file_path = os.path.join(file_directory, file_name)
+        print(chunk_file_path)
         # Check if the file exists
         if not os.path.exists(chunk_file_path):
             return {"status": "error", "message": "Chunk file chunks.json not found"}

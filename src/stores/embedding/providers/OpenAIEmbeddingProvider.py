@@ -20,26 +20,22 @@ class OpenAIEmbeddingProvider(EmbeddingInterface):
         self.client = OpenAI(api_key=api_key)
 
 
-    def generate_embedding(self, text: str) -> List[float]:
+    def generate_embedding(self, texts: List[str]) -> List[List[float]]:
         """
         Generates an embedding for the provided text.
 
         :param text: The input text to embed.
         :return: A list representing the embedding vector.
         """
-        # Validate input text
-        if not isinstance(text, str) or text.strip() == "":
-            raise ValueError("Input text must be a non-empty string.")
-
         # Check token length (basic approximation)
-        token_count = len(text.split())  # Use a tokenizer for better accuracy
-        if token_count > self.max_input_token:
-            raise ValueError(f"Input text exceeds max tokens ({token_count}/{self.max_input_token}). Please shorten it.")
+        for text in texts:
+            if len(text.split()) > self.max_input_token:
+                raise ValueError(f"One of the inputs exceeds the max token limit of {self.max_input_token} tokens.")
 
         try:
             # Generate embedding using OpenAI client
             embedding = self.client.embeddings.create(
-                input=text,
+                input=text[0],
                 model=self.model_id
             ).data[0].embedding
 
@@ -54,3 +50,4 @@ class OpenAIEmbeddingProvider(EmbeddingInterface):
                                max_input_token ):
         self.model_id = model_id
         self.max_input_token = max_input_token
+        

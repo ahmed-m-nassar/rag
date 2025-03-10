@@ -76,15 +76,15 @@ class ChromaDBProvider(VectorDBInterface):
             logging.warning(f"Collection '{collection_name}' not found.")
 
 
-    def add_vectors(self, documents: list, embeddings: list, metadatas: list, ids: list, collection_name: str, batch_size: int = 100):
+    def add_vectors(self, documents: list, embeddings: list, metadatas: list = None, ids: list = None, collection_name: str = "default", batch_size: int = 100):
         """
         Add vectors (embeddings) to a collection in batches with dimension validation against existing embeddings.
 
         Args:
         - documents (list): List of text documents.
         - embeddings (list): List of embeddings (vectors).
-        - metadatas (list): List of metadata dictionaries.
-        - ids (list): List of unique IDs.
+        - metadatas (list, optional): List of metadata dictionaries. If None, defaults to empty dictionaries.
+        - ids (list, optional): List of unique IDs. If None, generates sequential numeric IDs.
         - collection_name (str): Target collection name.
         - batch_size (int): Number of embeddings per batch (default=100).
         """
@@ -92,6 +92,14 @@ class ChromaDBProvider(VectorDBInterface):
         if not collection:
             logging.error(f"Cannot add vectors. Collection '{collection_name}' not found.")
             return
+
+        # Ensure metadatas and ids are provided
+        if metadatas is None or not all(isinstance(m, dict) and m for m in metadatas): 
+            metadatas = [{"default_key": "default_value"} for _ in range(len(documents))]  # Add a dummy key-value pair
+
+
+        if ids is None:
+            ids = [str(i) for i in range(len(documents))]  # Generate numeric string IDs
 
         # Step 1: Check existing embeddings in collection
         existing_data = collection.query(query_embeddings=[[0] * len(embeddings[0])], n_results=1)  # Dummy query
@@ -128,8 +136,8 @@ class ChromaDBProvider(VectorDBInterface):
             logging.info(f"Inserted batch {i // batch_size + 1} ({len(batch_embeddings)} vectors) into '{collection_name}'.")
 
         logging.info(f"Successfully added {total_vectors} vectors to '{collection_name}' in batches of {batch_size}.")
-
-
+        
+            
     def query_embeddings(self, embeddings: list, n_results: int, collection_name: str):
         """
         Query similar embeddings from the collection.
@@ -147,13 +155,19 @@ class ChromaDBProvider(VectorDBInterface):
         Retrieve metadata and number of embeddings stored in a collection.
         """
         collection = self.get_collection(collection_name)
+        sample_data = collection.get(include=['embeddings', 'documents', 'metadatas'] , limit=3)
         if collection:
             try:
                 count = collection.count()  # Get total number of embeddings
                 info = {
                     "collection_name": collection_name,
                     "num_vectors": count,
-                    "metadata_schema": collection.metadata if hasattr(collection, "metadata") else "N/A"
+                    "sample": {
+                        "documents": sample_data.get("documents", []),
+                        "embeddings": sample_data.get("embeddings", []),
+                        "metadatas": sample_data.get("metadatas", []),
+                        "ids": sample_data.get("ids", [])
+                    }
                 }
                 return info
             except Exception as e:

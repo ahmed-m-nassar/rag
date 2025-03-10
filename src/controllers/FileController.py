@@ -4,6 +4,7 @@ from .BaseController import BaseController
 from models.enums.ResponseEnum import ResponseSignal
 from werkzeug.utils import secure_filename
 import os 
+import uuid
 import shutil
 from langchain_community.document_loaders import PyPDFLoader
 # Configure logging
@@ -77,4 +78,14 @@ class FileController(BaseController):
 
         return file_content
     
+    async def file_exists(self, file_directory: str, file_name: str) -> bool:
+        return os.path.exists(os.path.join(file_directory, file_name))
     
+    async def generate_unique_filename(self, file_directory: str, file_name: str) -> str:
+        base_name, extension = os.path.splitext(file_name)
+        
+        while True:
+            random_text = uuid.uuid4().hex[:8]  # Generate a random 8-character string
+            new_file_name = f"{base_name}_{random_text}{extension}"
+            if not await self.file_exists(file_directory, new_file_name):
+                return new_file_name

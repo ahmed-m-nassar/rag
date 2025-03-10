@@ -1,6 +1,7 @@
 from fastapi import APIRouter,Request
 from fastapi.responses import JSONResponse
 import logging
+import os
 from controllers.FileController  import FileController
 from controllers.ChunkController  import ChunkController
 from helpers.config import get_settings
@@ -12,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 chunk_router = APIRouter(
     prefix="/api/v1/chunk",
-    tags=["api_v1", "file"],
+    tags=["api_v1", "chunk"],
 )
 
 @chunk_router.get("/")
@@ -34,13 +35,13 @@ async def chunk_file(request : Request ,
                                                chunk_size=chunk_size,
                                                chunk_overlap=chunk_overlap)
     
-    await chunk_controller.save_chunks(chunks=chunks , file_directory=settings.CHUNKS_DIR)
-    chunks = await chunk_controller.load_chunks(file_directory=settings.CHUNKS_DIR)
+    chunk_file_name= os.path.splitext(file_name)[0] + "_chunks.json"
+    await chunk_controller.save_chunks(chunks=chunks , file_directory=settings.CHUNKS_DIR , file_name=chunk_file_name)
 
     sample_chunks = chunks[:3] if len(chunks) > 3 else chunks
     return JSONResponse(
                     content={
                         "sample_chunks": [chunk for chunk in sample_chunks], 
-                        "total_chunks": len(chunks),
+                        "total_chunks": len(chunks)
                     }
                 )

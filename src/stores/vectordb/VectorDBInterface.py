@@ -11,27 +11,27 @@ class VectorDBInterface(ABC):
         pass
 
     @abstractmethod
-    def collection_exists_flg(collection_name):
+    def collection_exists_flg(self ,collection_name):
         pass
 
     @abstractmethod
-    def create_collection(collection_name):
+    def create_collection(self, collection_name):
         pass
         
     @abstractmethod
-    def get_collection(collection_name):
+    def get_collection(self, collection_name):
         pass
         
     @abstractmethod
-    def delete_collection(collection_name):
+    def delete_collection(self, collection_name):
         pass
 
     @abstractmethod
-    def add_vectors(self, documents: list, embeddings: list, metadatas: list, ids: list, collection_name: str, batch_size: int = 100):
+    def add_vectors(self, documents: list, embeddings: list, metadatas: list = None, ids: list = None, collection_name: str = "default", batch_size: int = 100):
         pass
 
     @abstractmethod
-    def query_embeddings(embeddings : list , n_results , collection_name):
+    def query_embeddings(self, embeddings : list , n_results , collection_name):
         pass
 
     @abstractmethod

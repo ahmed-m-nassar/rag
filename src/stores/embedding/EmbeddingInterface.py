@@ -4,7 +4,7 @@ from typing import Dict, List, Any
 class EmbeddingInterface(ABC):
 
     @abstractmethod
-    def generate_embedding(self, text: str) -> List[float]:
+    def generate_embedding(self, texts: List[str]) -> List[List[float]]:
         pass
 
     @abstractmethod

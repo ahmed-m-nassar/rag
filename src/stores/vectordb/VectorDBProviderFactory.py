@@ -1,11 +1,11 @@
 from .providers.ChromaDBProvider import ChromaDBProvider
 from .VectorDBEnum import VectorDBEnum
-class VerctorDBProviderFactory:
-    def __init__(self, config: dict):
-        self.config = config
+class VectorDBProviderFactory:
+    def __init__(self ):
+        pass
 
-    def create(self, provider: str):
+    def create(self, provider: str , path : str):
         if provider == VectorDBEnum.CHROMA_DB.value:
             return ChromaDBProvider(
-                path = self.config.VECTORDB_PATH,
+                path = path,
             )
