@@ -1,59 +1,64 @@
-from fastapi import APIRouter, UploadFile,HTTPException,Request , status
+from fastapi import APIRouter, UploadFile, HTTPException, Request, status, Depends
 from fastapi.responses import JSONResponse
 import logging
-from controllers.FileController  import FileController
-from models.enums.ResponseEnum import ResponseSignal
-from helpers.config import get_settings
-
 import os
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from controllers.FileController import FileController
+from models.enums.ResponseEnum import ResponseSignal
+from helpers.config import get_settings
+from helpers.logger import get_logger  # Use centralized logging
 
 upload_router = APIRouter(
     prefix="/api/v1/upload",
     tags=["api_v1", "upload"],
 )
 
-UPLOAD_DIR = "assets/uploaded_files"  # Directory where files will be saved
-os.makedirs(UPLOAD_DIR, exist_ok=True)  # Ensure the directory exists
+# Ensure the upload directory exists
+UPLOAD_DIR = "assets/uploaded_files"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-@upload_router.post("/")
-async def upload_file(request : Request , file: UploadFile):
+# Initialize Logger
+logger = get_logger(__name__)  
 
-    settings = get_settings()
-    file_controller = FileController()
+# Dependency Injection for FileController & Settings
+def get_file_controller():
+    return FileController()
 
-    # Validate the file
+@upload_router.post("/", status_code=status.HTTP_201_CREATED)
+async def upload_file(
+    request: Request, 
+    file: UploadFile, 
+    file_controller: FileController = Depends(get_file_controller),
+    settings=Depends(get_settings)
+):
     try:
+        # Validate the file
         await file_controller.validate_file(file)
-    except HTTPException as e:
+
+        # Sanitize and generate unique filename
+        safe_filename = await file_controller.sanitize_file_name(file)
+        unique_safe_file_name = await file_controller.generate_unique_filename(
+            file_directory=settings.UPLOAD_DIR, 
+            file_name=safe_filename
+        )
+
+        # Save file
+        await file_controller.save_file(file, UPLOAD_DIR, unique_safe_file_name)
+
+        logger.info(f"File '{safe_filename}' uploaded successfully.")
+
         return JSONResponse(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        content={
-                            "message": e.detail
-                        }
-                    )
-    
-    # Sanitize file name
-    safe_filename = await file_controller.sanitize_file_name(file)
+            status_code=status.HTTP_201_CREATED,
+            content={
+                "message": ResponseSignal.FILE_UPLOAD_SUCCESS.value,
+                "file_name": unique_safe_file_name
+            }
+        )
 
-    # Generate unique santized file name
-    unique_safe_file_name = await file_controller.generate_unique_filename(file_directory= settings.UPLOAD_DIR, file_name=safe_filename)
+    except HTTPException as e:
+        logger.warning(f"File upload failed: {e.detail}")
+        raise HTTPException(status_code=e.status_code, detail=str(e.detail))
 
-    # Save file
-    await file_controller.save_file(file , UPLOAD_DIR , unique_safe_file_name)
-
-    logger.info(f"File '{safe_filename}' uploaded successfully.")
-
-    
-    return JSONResponse(
-                        content={
-                            "message": ResponseSignal.FILE_UPLOAD_SUCCESS.value,
-                            "file_name" : unique_safe_file_name
-                        }
-                    )
-
-
-
+    except Exception as e:
+        logger.error(f"Unexpected error during file upload: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=ResponseSignal.UNEXPECTED_ERROR.value)

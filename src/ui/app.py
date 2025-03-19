@@ -3,6 +3,9 @@ import streamlit as st
 import requests
 import plotly.express as px
 import streamlit.components.v1 as components
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from stores.reranking.RerankingEnum import RerankingModelsProvidersEnums
 
 # Initialize session state
 def initialize_state():
@@ -20,7 +23,8 @@ UPLOAD_URL = "http://localhost:8000/api/v1/upload/"
 CHUNK_URL = "http://localhost:8000/api/v1/chunk/"
 EMBED_URL = "http://localhost:8000/api/v1/embed"
 API_URL = "http://localhost:8000/api/v1/retrieve"
-
+RERANK_API_URL = "http://localhost:8000/api/v1/rerank"
+GENERATE_URL = "http://localhost:8000/api/v1/generate"
 st.title("📚 Customizable RAG System")
 initialize_state()
 
@@ -33,7 +37,7 @@ if st.button("Upload"):
     if uploaded_file:
         files = {"file": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)}
         response = requests.post(UPLOAD_URL, files=files)
-        if response.status_code == 200:
+        if response.status_code == 201:
             result = response.json()
             st.session_state.file_name = result.get("file_name")
             st.success(f"✅ Uploaded: {st.session_state.file_name}")
@@ -54,19 +58,20 @@ with col3:
 
 if st.button("Chunk Text"):
     if st.session_state.file_name:
-        params = {
+        payload = {
             "file_name": st.session_state.file_name,
             "chunking_method": chunk_methods[chunk_method],
             "chunk_size": chunk_size,
             "chunk_overlap": chunk_overlap,
         }
-        response = requests.get(CHUNK_URL, params=params)
+        response = requests.post(CHUNK_URL, json=payload)  # Use POST with JSON body
+
         if response.status_code == 200:
             result = response.json()
             st.session_state.chunks = result.get("sample_chunks", [])[:3]
             st.markdown(f"📄 **Total Chunks:** {result.get('total_chunks')}")
         else:
-            st.error("❌ Chunking failed.")
+            st.error(f"❌ Chunking failed. Error: {response.text}")  # Show error message
 
 # Display sample chunks
 if st.session_state.chunks:
@@ -140,6 +145,7 @@ with col3:
 
 if st.button("🔎 Search"):
     if query:
+        st.session_state.query = query
         payload = {
             "file_name": st.session_state.file_name,
             "query": query,
@@ -150,7 +156,6 @@ if st.button("🔎 Search"):
             "max_input_token": st.session_state.max_input_token,
         }
         headers = {"api-key": st.session_state.api_key} if st.session_state.api_key else {}
-        print(payload)
         response = requests.post(API_URL, json=payload, headers=headers)
         if response.status_code == 200:
             st.session_state.search_results = response.json().get("results", [])
@@ -163,3 +168,102 @@ if st.session_state.search_results:
         for i, result in enumerate(st.session_state.search_results):
             st.write(f"**Result {i+1}:**")
             st.text(result)
+
+
+# Ensure search results exist
+if "search_results" not in st.session_state:
+    st.session_state.search_results = []
+
+# Ensure query is stored
+if "query" not in st.session_state:
+    st.session_state.query = ""
+
+# Reranking System
+st.subheader("🔝 Rerank Results")
+
+if st.session_state.search_results:
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        rerank_providers = {
+            "Local Hugging Face Models": "hugging_face_local",
+            "OpenAI": "OpenAI",
+            "Cohere": "Cohere"
+        }
+        selected_rerank_provider = st.selectbox("Provider", list(rerank_providers.keys()))
+    with col2:
+        rerank_model_id = st.selectbox("Select Reranker Model", ["ms-marco-MiniLM-L6-v2", "mmarco-mMiniLMv2-L12-H384-v1"])
+
+    if st.button("🚀 Rerank"):
+        payload = {
+            "query": st.session_state.query,  # Ensure query is included
+            "docs": st.session_state.search_results,
+            "provider": rerank_providers[selected_rerank_provider],
+            "model_id": rerank_model_id,
+        }
+        
+        headers = {"api-key": st.session_state.api_key} if st.session_state.api_key else {}
+
+        response = requests.post(RERANK_API_URL, json=payload, headers=headers)
+        if response.status_code == 200:
+            st.session_state.rerank_results = response.json().get("results", [])
+        else:
+            st.error("❌ Reranking failed.")
+
+# Display reranked results
+if "rerank_results" in st.session_state and st.session_state.rerank_results:
+    with st.expander("📑 View Reranked Results", expanded=True):
+        for i, result in enumerate(st.session_state.rerank_results):
+            st.write(f"**Rank {i+1}:**")
+            st.text(result)
+
+
+
+# RAG System
+st.subheader("💡 Generation System")
+
+col1, col2 = st.columns([1, 1])
+with col1:
+    generation_providers = {
+        "Ollama": "ollama",
+        "OpenAI": "OpenAI",
+        "Cohere": "Cohere"
+    }
+    selected_generation_provider = st.selectbox("Provider", list(generation_providers.keys()))
+
+with col2:
+    rag_model_id = st.text_input("Model ID", "")
+
+# Conditionally add base URL input for Ollama
+base_url = None
+if selected_generation_provider == "Ollama":
+    base_url = st.text_input("Base URL for Ollama", "http://localhost:11434")
+
+system_prompt = st.text_area("System Prompt (optional)")
+api_key = st.text_input("API Key (optional)", type="password")
+
+if st.button("🚀 Generate Response"):
+    payload = {
+        "query": st.session_state.get("query", ""),  
+        "docs": [item[0] for item in st.session_state.get("rerank_results", [])],  
+        "provider": generation_providers[selected_generation_provider],
+        "model_id": rag_model_id,
+        "system_prompt": system_prompt if system_prompt else None
+    }
+    
+    # Add base_url only if Ollama is selected
+    if selected_generation_provider == "Ollama":
+        payload["base_url"] = base_url
+
+    print(payload)
+    headers = {"api-key": api_key} if api_key else {}
+    response = requests.post(GENERATE_URL, json=payload, headers=headers)
+    
+    if response.status_code == 200:
+        st.session_state["rag_results"] = response.json().get("response", "No response received.")
+    else:
+        st.error("❌ RAG request failed.")
+
+# Display generated response
+if "rag_results" in st.session_state and st.session_state["rag_results"]:
+    with st.expander("📑 View Generated Response", expanded=True):
+        st.write(st.session_state["rag_results"])

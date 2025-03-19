@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     CHUNKS_DIR : str
     EMBEDDINGS_DIR : str
     EMBEDDING_MODELS_DIR : str
+    RERANKING_MODELS_DIR : str
+
     VISUALIZATIONS_DIR : str
 
     MONGODB_CONNECTION : str
